@@ -1,0 +1,13 @@
+#!/bin/sh
+
+set -v
+
+root=$(cd "$(dirname "$0")" && cd .. && pwd)
+
+#command="cat /var/log/nginx/access.log | alp json --sort=sum -r -m '/api/user/[a-zA-Z0-9]+/theme,/api/user/[a-zA-Z0-9]+/livestream,/api/livestream/[0-9]+$,/api/livestream/[0-9]+/livecomment,/api/livestream/[0-9]+/reaction,/api/livestream/[0-9]+/report,/api/livestream/[0-9]+/ngwords,/api/user/[a-zA-Z0-9]+$,/api/user/[a-zA-Z0-9]+/statistics,/api/user/[a-zA-Z0-9]+/icon,/api/livestream/[0-9]+/statistics'"
+command="cat /var/log/nginx/access.log | alp json --sort=sum -r -m '^/api/user/[a-zA-Z0-9]+/theme$,^/api/user/[a-zA-Z0-9]+/livestream$,^/api/livestream/[0-9]+$,^/api/livestream/[0-9]+/livecomment$,^/api/livestream/[0-9]+/livecomment$,^/api/livestream/[0-9]+/reaction$,^/api/livestream/[0-9]+/reaction$,^/api/livestream/[0-9]+/report$,^/api/livestream/[0-9]+/ngwords$,^/api/livestream/[0-9]+/livecomment/[0-9]+/report$,^/api/livestream/[0-9]+/moderate$,^/api/livestream/[0-9]+/enter$,^/api/livestream/[0-9]+/exit$,^/api/user/[a-zA-Z0-9]+$,^/api/user/[a-zA-Z0-9]+/statistics$,^/api/user/[a-zA-Z0-9]+/icon$,^/api/livestream/[0-9]+/statistics$'"
+
+ssh isucon@isu01 "$command"
+
+
+
