@@ -381,7 +381,7 @@ func moderateHandler(c echo.Context) error {
 		DELETE FROM livecomments
 		WHERE
 			livestream_id = ? AND
-			MATCH(comment) AGAINST (?)
+			MATCH(comment) AGAINST (? IN BOOLEAN MODE)
 		`
 	if _, err := tx.ExecContext(ctx, query, livestreamID, req.NGWord); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete old livecomments that hit spams: "+err.Error())
