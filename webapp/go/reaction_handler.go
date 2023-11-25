@@ -66,19 +66,14 @@ func getReactionsHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "failed to get reactions")
 	}
 
-	// reactions := make([]Reaction, len(reactionModels))
-	// for i := range reactionModels {
-	// 	reaction, err := fillReactionResponse(ctx, tx, reactionModels[i])
-	// 	if err != nil {
-	// 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill reaction: "+err.Error())
-	// 	}
+	reactions := make([]Reaction, len(reactionModels))
+	for i := range reactionModels {
+		reaction, err := fillReactionResponse(ctx, tx, reactionModels[i])
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill reaction: "+err.Error())
+		}
 
-	// 	reactions[i] = reaction
-	// }
-
-	reactions, err := fillReactionResponses(ctx, tx, reactionModels)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill reactions: "+err.Error())
+		reactions[i] = reaction
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -144,104 +139,6 @@ func postReactionHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, reaction)
-}
-
-func fillReactionResponses(ctx context.Context, tx *sqlx.Tx, reactionModels []ReactionModel) ([]Reaction, error) {
-	if len(reactionModels) == 0 {
-		return []Reaction{}, nil
-	}
-
-	reactions := make([]Reaction, 0)
-
-	// populate users
-	users := make(map[int64]User)
-
-	userIDs := make([]int64, 0)
-	for i := range reactionModels {
-		userIDs = append(userIDs, reactionModels[i].UserID)
-	}
-
-	query := "SELECT * FROM users WHERE id IN (?)"
-	query, args, err := sqlx.In(query, userIDs)
-	if err != nil {
-		return []Reaction{}, err
-	}
-
-	// TODO: ユーザーの数とリアクションの数が一致しない場合は返したほうがいいかも
-
-	userModels := []UserModel{}
-	if err := tx.SelectContext(ctx, &userModels, query, args...); err != nil {
-		return []Reaction{}, err
-	}
-	
-	us, err := fillUserResponses(ctx, tx, userModels)
-	if err != nil {
-		return []Reaction{}, err
-	}
-
-	for _, user := range us {
-		var reactionModelID int64
-		for i := range reactionModels {
-			if reactionModels[i].UserID == user.ID {
-				reactionModelID = reactionModels[i].ID
-				break
-			}
-		}
-
-		users[reactionModelID] = user
-	}
-
-	// populate liveStream
-	livestreams := make(map[int64]Livestream)
-
-	livestreamIDs := make([]int64, 0)
-	for i := range reactionModels {
-		livestreamIDs = append(livestreamIDs, reactionModels[i].LivestreamID)
-	}
-
-	query = "SELECT * FROM livestreams WHERE id IN (?)"
-	query, args, err = sqlx.In(query, livestreamIDs)
-	if err != nil {
-		return []Reaction{}, err
-	}
-
-	// TODO: ライブの数とリアクションの数が一致しない場合は返したほうがいいかも
-
-	livestreamModels := []LivestreamModel{}
-	if err := tx.SelectContext(ctx, &livestreamModels, query, args...); err != nil {
-		return []Reaction{}, err
-	}
-
-	ls, err := fillLivestreamResponses(ctx, tx, livestreamModels)
-	if err != nil {
-		return []Reaction{}, err
-	}
-
-	for _, livestream := range ls {
-		var reactionModelID int64
-		for i := range reactionModels {
-			if reactionModels[i].LivestreamID == livestream.ID {
-				reactionModelID = reactionModels[i].ID
-				break
-			}
-		}
-
-		livestreams[reactionModelID] = livestream
-	}
-
-	for _, reactionModel := range reactionModels {
-		reaction := Reaction{
-			ID:         reactionModel.ID,
-			EmojiName:  reactionModel.EmojiName,
-			User:       users[reactionModel.ID],
-			Livestream: livestreams[reactionModel.ID],
-			CreatedAt:  reactionModel.CreatedAt,
-		}
-
-		reactions = append(reactions, reaction)
-	}
-
-	return reactions, nil
 }
 
 func fillReactionResponse(ctx context.Context, tx *sqlx.Tx, reactionModel ReactionModel) (Reaction, error) {
