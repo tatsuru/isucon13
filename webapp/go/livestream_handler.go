@@ -487,8 +487,10 @@ func getLivecommentReportsHandler(c echo.Context) error {
 func fillLivestreamResponses(ctx context.Context, tx *sqlx.Tx, livestreamModels []LivestreamModel) ([]Livestream, error) {
 	ownerModels := []UserModel{}
 	userIDs := make([]int64, 0, len(livestreamModels))
-	for i := range livestreamModels {
-		userIDs[i] = livestreamModels[i].UserID
+	livestreamIDs := make([]int64, 0, len(livestreamModels))
+	for _, lm := range livestreamModels {
+		userIDs = append(userIDs, lm.UserID)
+		livestreamIDs = append(livestreamIDs, lm.ID)
 	}
 
 	query, params, err := sqlx.In("SELECT * FROM users WHERE id in (?)", userIDs)
@@ -503,11 +505,6 @@ func fillLivestreamResponses(ctx context.Context, tx *sqlx.Tx, livestreamModels 
 		return []Livestream{}, err
 	}
 
-	livestreamIDs := make([]int64, len(livestreamModels))
-	for i := range livestreamModels {
-		livestreamIDs[i] = livestreamModels[i].ID
-	}
-
 	query, params, err = sqlx.In("SELECT * FROM livestream_tags WHERE livestream_id IN (?)", livestreamIDs)
 	if err != nil {
 		return []Livestream{}, err
@@ -518,8 +515,8 @@ func fillLivestreamResponses(ctx context.Context, tx *sqlx.Tx, livestreamModels 
 	}
 
 	tagIDs := make([]int64, 0, len(livestreamTagModels))
-	for i := range livestreamTagModels {
-		tagIDs[i] = livestreamTagModels[i].TagID
+	for _, ltm := range livestreamTagModels {
+		tagIDs = append(tagIDs, ltm.TagID)
 	}
 
 	tags := make([]Tag, 0, len(livestreamTagModels))
@@ -592,7 +589,7 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 		tagIDs = append(tagIDs, tm.TagID)
 	}
 
-	tags := make([]Tag, len(tagIDs))
+	tags := make([]Tag, 0, len(tagIDs))
 	if len(tagIDs) > 0 {
 		query, params, err := sqlx.In("SELECT * FROM tags WHERE id IN (?)", tagIDs)
 		if err != nil {
@@ -603,11 +600,11 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 			return Livestream{}, err
 		}
 
-		for i, tagModel := range tagModels {
-			tags[i] = Tag{
+		for _, tagModel := range tagModels {
+			tags = append(tags, Tag{
 				ID:   tagModel.ID,
 				Name: tagModel.Name,
-			}
+			})
 		}
 	}
 
