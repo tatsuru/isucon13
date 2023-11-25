@@ -76,7 +76,7 @@ func getReactionsHandler(c echo.Context) error {
 	// 	reactions[i] = reaction
 	// }
 
-	reactions, err := fillReactionResponses(ctx, tx, reactionModels)
+	reactions, err := fillReactionResponses(c, ctx, tx, reactionModels)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill reactions: "+err.Error())
 	}
@@ -146,7 +146,7 @@ func postReactionHandler(c echo.Context) error {
 	return c.JSON(http.StatusCreated, reaction)
 }
 
-func fillReactionResponses(ctx context.Context, tx *sqlx.Tx, reactionModels []ReactionModel) ([]Reaction, error) {
+func fillReactionResponses(c echo.Context, ctx context.Context, tx *sqlx.Tx, reactionModels []ReactionModel) ([]Reaction, error) {
 	if len(reactionModels) == 0 {
 		return []Reaction{}, nil
 	}
@@ -164,19 +164,20 @@ func fillReactionResponses(ctx context.Context, tx *sqlx.Tx, reactionModels []Re
 	query := "SELECT * FROM users WHERE id IN (?)"
 	query, args, err := sqlx.In(query, userIDs)
 	if err != nil {
-		return nil, err
+		return []Reaction{}, err
 	}
 
 	// TODO: ユーザーの数とリアクションの数が一致しない場合は返したほうがいいかも
 
 	userModels := []UserModel{}
 	if err := tx.SelectContext(ctx, &userModels, query, args...); err != nil {
-		return nil, err
+		return []Reaction{}, err
 	}
 	
 	us, err := fillUserResponses(ctx, tx, userModels)
+	c.Logger().Errorf("users: %+v", us)
 	if err != nil {
-		return nil, err
+		return []Reaction{}, err
 	}
 
 	for _, user := range us {
@@ -202,19 +203,20 @@ func fillReactionResponses(ctx context.Context, tx *sqlx.Tx, reactionModels []Re
 	query = "SELECT * FROM livestreams WHERE id IN (?)"
 	query, args, err = sqlx.In(query, livestreamIDs)
 	if err != nil {
-		return nil, err
+		return []Reaction{}, err
 	}
 
 	// TODO: ライブの数とリアクションの数が一致しない場合は返したほうがいいかも
 
 	livestreamModels := []LivestreamModel{}
 	if err := tx.SelectContext(ctx, &livestreamModels, query, args...); err != nil {
-		return nil, err
+		return []Reaction{}, err
 	}
 
 	ls, err := fillLivestreamResponses(ctx, tx, livestreamModels)
+	c.Logger().Errorf("livestreams: %+v", ls)
 	if err != nil {
-		return nil, err
+		return []Reaction{}, err
 	}
 
 	for _, livestream := range ls {
