@@ -149,6 +149,7 @@ func postReactionHandler(c echo.Context) error {
 	}
 
 	incrCache(fmt.Sprintf("user:%d:reactions", livestreamModel.UserID))
+	incrCache(fmt.Sprintf("livestream:%d:reactions", livestreamModel.ID))
 
 	return c.JSON(http.StatusCreated, reaction)
 }

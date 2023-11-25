@@ -325,35 +325,42 @@ func enterLivestreamHandler(c echo.Context) error {
 		return err
 	}
 
-	// error already checked
-	sess, _ := session.Get(defaultSessionIDKey, c)
-	// existence already checked
-	userID := sess.Values[defaultUserIDKey].(int64)
+	// // error already checked
+	// sess, _ := session.Get(defaultSessionIDKey, c)
+	// // existence already checked
+	// userID := sess.Values[defaultUserIDKey].(int64)
 
 	livestreamID, err := strconv.Atoi(c.Param("livestream_id"))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "livestream_id must be integer")
 	}
-
-	tx, err := dbConn.BeginTxx(ctx, nil)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
-	}
-	defer tx.Rollback()
-
-	viewer := LivestreamViewerModel{
-		UserID:       int64(userID),
-		LivestreamID: int64(livestreamID),
-		CreatedAt:    time.Now().Unix(),
+	livestreamModel := LivestreamModel{}
+	if err := dbConn.GetContext(ctx, &livestreamModel, "SELECT * FROM livestreams WHERE id = ?", livestreamID); err != nil {
+		return err
 	}
 
-	if _, err := tx.NamedExecContext(ctx, "INSERT INTO livestream_viewers_history (user_id, livestream_id, created_at) VALUES(:user_id, :livestream_id, :created_at)", viewer); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert livestream_view_history: "+err.Error())
-	}
+	// tx, err := dbConn.BeginTxx(ctx, nil)
+	// if err != nil {
+	// 	return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
+	// }
+	// defer tx.Rollback()
 
-	if err := tx.Commit(); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
-	}
+	// viewer := LivestreamViewerModel{
+	// 	UserID:       int64(userID),
+	// 	LivestreamID: int64(livestreamID),
+	// 	CreatedAt:    time.Now().Unix(),
+	// }
+
+	// if _, err := tx.NamedExecContext(ctx, "INSERT INTO livestream_viewers_history (user_id, livestream_id, created_at) VALUES(:user_id, :livestream_id, :created_at)", viewer); err != nil {
+	// 	return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert livestream_view_history: "+err.Error())
+	// }
+
+	// if err := tx.Commit(); err != nil {
+	// 	return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
+	// }
+
+	incrCache(fmt.Sprintf("livestream:%d:viewers", livestreamID))
+	incrCache(fmt.Sprintf("user:%d:viewers", livestreamModel.UserID))
 
 	return c.NoContent(http.StatusOK)
 }
@@ -365,29 +372,36 @@ func exitLivestreamHandler(c echo.Context) error {
 		return err
 	}
 
-	// error already checked
-	sess, _ := session.Get(defaultSessionIDKey, c)
-	// existence already checked
-	userID := sess.Values[defaultUserIDKey].(int64)
+	// // error already checked
+	// sess, _ := session.Get(defaultSessionIDKey, c)
+	// // existence already checked
+	// userID := sess.Values[defaultUserIDKey].(int64)
 
 	livestreamID, err := strconv.Atoi(c.Param("livestream_id"))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "livestream_id in path must be integer")
 	}
-
-	tx, err := dbConn.BeginTxx(ctx, nil)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
-	}
-	defer tx.Rollback()
-
-	if _, err := tx.ExecContext(ctx, "DELETE FROM livestream_viewers_history WHERE user_id = ? AND livestream_id = ?", userID, livestreamID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete livestream_view_history: "+err.Error())
+	livestreamModel := LivestreamModel{}
+	if err := dbConn.GetContext(ctx, &livestreamModel, "SELECT * FROM livestreams WHERE id = ?", livestreamID); err != nil {
+		return err
 	}
 
-	if err := tx.Commit(); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
-	}
+	// tx, err := dbConn.BeginTxx(ctx, nil)
+	// if err != nil {
+	// 	return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
+	// }
+	// defer tx.Rollback()
+
+	// if _, err := tx.ExecContext(ctx, "DELETE FROM livestream_viewers_history WHERE user_id = ? AND livestream_id = ?", userID, livestreamID); err != nil {
+	// 	return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete livestream_view_history: "+err.Error())
+	// }
+
+	// if err := tx.Commit(); err != nil {
+	// 	return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
+	// }
+
+	decrCache(fmt.Sprintf("livestream:%d:viewers", livestreamID))
+	decrCache(fmt.Sprintf("user:%d:viewers", livestreamModel.UserID))
 
 	return c.NoContent(http.StatusOK)
 }
