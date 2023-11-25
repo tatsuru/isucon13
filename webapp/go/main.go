@@ -107,11 +107,22 @@ func connectDB(logger echo.Logger) (*sqlx.DB, error) {
 	return db, nil
 }
 
+const initialPowerDNSZoneFile = "../pdns/u.isucon.dev.zone.initial"
 const powerDNSZoneFile = "../pdns/u.isucon.dev.zone"
+
 func initializeHandler(c echo.Context) error {
 	if out, err := exec.Command("../sql/init.sh").CombinedOutput(); err != nil {
 		c.Logger().Warnf("init.sh failed with err=%s", string(out))
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to initialize: "+err.Error())
+	}
+
+	// remove ../pdns/u.isucon.dev.zone
+	if err := os.Remove(powerDNSZoneFile); err != nil {
+		c.Logger().Warnf("failed to remove %s: %v", powerDNSZoneFile, err)
+	}
+	// coppy ../pdns/u.isucon.dev.zone.initial to ../pdns/u.isucon.dev.zone
+	if err := exec.Command("cp", initialPowerDNSZoneFile, powerDNSZoneFile).Run(); err != nil {
+		c.Logger().Warnf("failed to copy %s to %s: %v", initialPowerDNSZoneFile, powerDNSZoneFile, err)
 	}
 
 	c.Request().Header.Add("Content-Type", "application/json;charset=utf-8")
