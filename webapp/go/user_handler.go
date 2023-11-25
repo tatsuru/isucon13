@@ -109,7 +109,6 @@ func getIconHandler(c echo.Context) error {
 	// リクエストヘッダーのIf-None-Matchをチェック
 	hash := c.Request().Header.Get("If-None-Match")
 	if hash != "" {
-		// compare hash to user icon hash
 		var imageHash string
 		if err := tx.GetContext(ctx, &imageHash, "SELECT image_hash FROM icons WHERE user_id = ?", user.ID); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -118,6 +117,7 @@ func getIconHandler(c echo.Context) error {
 				return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user icon: "+err.Error())
 			}
 		}
+		c.Logger().Errorf("hash: %s, imageHash: %s", hash, imageHash)
 
 		if hash == imageHash {
 			return c.NoContent(http.StatusNotModified)
