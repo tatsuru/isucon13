@@ -595,7 +595,7 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 		if err != nil {
 			return Livestream{}, err
 		}
-		tagModels := make([]Tag, len(livestreamTagModels))
+		tagModels := make([]Tag, 0, len(livestreamTagModels))
 		if err := tx.SelectContext(ctx, &tagModels, query, params...); err != nil {
 			return Livestream{}, err
 		}
