@@ -1,15 +1,15 @@
-DROP TABLE themes;
-DROP TABLE icons;
-DROP TABLE reservation_slots;
-DROP TABLE livestream_viewers_history;
-DROP TABLE livecomment_reports;
-DROP TABLE ng_words;
-DROP TABLE reactions;
-DROP TABLE tags;
-DROP TABLE livestream_tags;
-DROP TABLE livecomments;
-DROP TABLE livestreams;
-DROP TABLE users;
+DROP TABLE IF EXISTS themes;
+DROP TABLE IF EXISTS icons;
+DROP TABLE IF EXISTS reservation_slots;
+DROP TABLE IF EXISTS livestream_viewers_history;
+DROP TABLE IF EXISTS livecomment_reports;
+DROP TABLE IF EXISTS ng_words;
+DROP TABLE IF EXISTS reactions;
+DROP TABLE IF EXISTS tags;
+DROP TABLE IF EXISTS livestream_tags;
+DROP TABLE IF EXISTS livecomments;
+DROP TABLE IF EXISTS livestreams;
+DROP TABLE IF EXISTS users;
 
 -- ユーザ (配信者、視聴者)
 CREATE TABLE `users` (
