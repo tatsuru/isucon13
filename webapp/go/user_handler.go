@@ -425,7 +425,7 @@ func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (Us
 			ID:       themeModel.ID,
 			DarkMode: themeModel.DarkMode,
 		},
-		IconHash: fmt.Sprintf("%s", imageHash),
+		IconHash: imageHash,
 	}
 
 	return user, nil
