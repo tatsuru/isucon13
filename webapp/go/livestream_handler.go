@@ -491,7 +491,11 @@ func fillLivestreamResponses(ctx context.Context, tx *sqlx.Tx, livestreamModels 
 		userIDs[i] = livestreamModels[i].UserID
 	}
 
-	if err := tx.GetContext(ctx, &ownerModels, "SELECT * FROM users WHERE id in (?)", userIDs); err != nil {
+	query, params, err := sqlx.In("SELECT * FROM users WHERE id in (?)", userIDs)
+	if err != nil {
+		return []Livestream{}, err
+	}
+	if err := tx.SelectContext(ctx, &ownerModels, query, params...); err != nil {
 		return []Livestream{}, err
 	}
 	owners, err := fillUserResponses(ctx, tx, ownerModels)
@@ -504,8 +508,12 @@ func fillLivestreamResponses(ctx context.Context, tx *sqlx.Tx, livestreamModels 
 		livestreamIDs[i] = livestreamModels[i].ID
 	}
 
+	query, params, err = sqlx.In("SELECT * FROM livestream_tags WHERE livestream_id IN (?)", livestreamIDs)
+	if err != nil {
+		return []Livestream{}, err
+	}
 	var livestreamTagModels []*LivestreamTagModel
-	if err := tx.SelectContext(ctx, &livestreamTagModels, "SELECT * FROM livestream_tags WHERE livestream_id IN (?)", livestreamIDs); err != nil {
+	if err := tx.SelectContext(ctx, &livestreamTagModels, query, params...); err != nil {
 		return []Livestream{}, err
 	}
 
@@ -514,8 +522,12 @@ func fillLivestreamResponses(ctx context.Context, tx *sqlx.Tx, livestreamModels 
 		tagIDs[i] = livestreamTagModels[i].TagID
 	}
 
+	query, params, err = sqlx.In("SELECT * FROM tags WHERE id IN (?)", tagIDs)
+	if err != nil {
+		return []Livestream{}, err
+	}
 	tags := make([]Tag, len(livestreamTagModels))
-	if err := tx.SelectContext(ctx, &tags, "SELECT * FROM tags WHERE id IN (?)", tagIDs); err != nil {
+	if err := tx.SelectContext(ctx, &tags, query, params...); err != nil {
 		return []Livestream{}, err
 	}
 
@@ -578,7 +590,11 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 		tagIDs[i] = livestreamTagModels[i].TagID
 	}
 
-	if err := tx.SelectContext(ctx, &tagModels, "SELECT * FROM tags WHERE id IN (?)", tagIDs); err != nil {
+	query, params, err := sqlx.In("SELECT * FROM tags WHERE id IN (?)", tagIDs)
+	if err != nil {
+		return Livestream{}, err
+	}
+	if err := tx.SelectContext(ctx, &tagModels, query, params...); err != nil {
 		return Livestream{}, err
 	}
 

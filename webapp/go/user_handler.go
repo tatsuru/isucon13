@@ -411,12 +411,20 @@ func fillUserResponses(ctx context.Context, tx *sqlx.Tx, userModels []UserModel)
 	for i, userModel := range userModels {
 		userIDs[i] = userModel.ID
 	}
-	if err := tx.SelectContext(ctx, &themeModels, "SELECT * FROM themes WHERE user_id IN (?)", userIDs); err != nil {
+	query, params, err := sqlx.In("SELECT * FROM themes WHERE user_id IN (?)", userIDs)
+	if err != nil {
+		return []User{}, err
+	}
+	if err := tx.SelectContext(ctx, &themeModels, query, params...); err != nil {
 		return []User{}, err
 	}
 
 	imageResp := []imageResp{}
-	if err := tx.SelectContext(ctx, &imageResp, "SELECT user_id, image FROM icons WHERE user_id IN (?)", userIDs); err != nil {
+	query, params, err = sqlx.In("SELECT user_id, image FROM icons WHERE user_id IN (?)", userIDs)
+	if err != nil {
+		return []User{}, err
+	}
+	if err := tx.SelectContext(ctx, &imageResp, query, params...); err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return []User{}, err
 		}
