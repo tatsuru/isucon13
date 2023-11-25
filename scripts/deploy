@@ -11,6 +11,7 @@ update="cd /home/isucon/isucon13 && git remote update && git checkout $branch &&
 restart="cd /home/isucon/isucon13/webapp/go && PATH=/home/isucon/local/golang/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin make && sudo systemctl restart isupipe-go.service"
 rotate_nginx="sudo mv -v /var/log/nginx/access.log /var/log/nginx/access.log.$now && sudo ln -sf /var/log/nginx/access.log.$now /var/log/nginx/access.log.latest; sudo systemctl reload nginx.service"
 rotate_mysql="sudo mv -v /var/log/mysql/mysql-slow.log /var/log/mysql/mysql-slow.log.$now && sudo ln -sf /var/log/mysql/mysql-slow.log.$now /var/log/mysql/mysql-slow.log.latest; mysqladmin -uisucon -pisucon flush-logs"
+restart_pdns="sudo systemctl restart pdns.service"
 
 ssh isucon@isu01 "$update" &
 ssh isucon@isu02 "$update" &
@@ -21,6 +22,11 @@ wait
 ssh isucon@isu01 "$restart" &
 ssh isucon@isu02 "$restart" &
 ssh isucon@isu03 "$restart" &
+
+# pdns
+ssh isucon@isu01 "$restart_dns" &
+ssh isucon@isu02 "$restart_dns" &
+ssh isucon@isu03 "$restart_dns" &
 
 # nginx
 ssh isucon@isu01 "$rotate_nginx" &

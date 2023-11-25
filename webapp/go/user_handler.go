@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 	"time"
 
@@ -275,7 +276,16 @@ func registerHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert user theme: "+err.Error())
 	}
 
-	if out, err := exec.Command("pdnsutil", "add-record", "u.isucon.dev", req.Name, "A", "0", powerDNSSubdomainAddress).CombinedOutput(); err != nil {
+	f, err := os.OpenFile(powerDNSZoneFile, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to open file: "+err.Error())
+	}
+	defer f.Close()
+	_, err = fmt.Fprintf(f, "%s\t0\tIN\tA\t%s\n", req.Name, powerDNSSubdomainAddress)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to write file: "+err.Error())
+	}
+	if out, err := exec.Command("sudo", "pdns_control", "bind-reload-now", "u.isucon.dev").CombinedOutput(); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, string(out)+": "+err.Error())
 	}
 

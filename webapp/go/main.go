@@ -108,6 +108,8 @@ func connectDB(logger echo.Logger) (*sqlx.DB, error) {
 	return db, nil
 }
 
+const powerDNSZoneFile = "/home/isucon/u.isucon.dev.zone"
+
 func initializeHandler(c echo.Context) error {
 	if out, err := exec.Command("../sql/init.sh").CombinedOutput(); err != nil {
 		c.Logger().Warnf("init.sh failed with err=%s", string(out))
