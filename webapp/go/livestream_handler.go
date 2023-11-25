@@ -221,7 +221,7 @@ func searchLivestreamsHandler(c echo.Context) error {
 		}
 	}
 
-	livestreamModelsNp := make([]LivestreamModel, len(livestreamModels))
+	livestreamModelsNp := make([]LivestreamModel, 0, len(livestreamModels))
 	for _, livestreamModel := range livestreamModels {
 		livestreamModelsNp = append(livestreamModelsNp, *livestreamModel)
 	}
