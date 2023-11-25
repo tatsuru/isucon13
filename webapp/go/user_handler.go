@@ -31,6 +31,7 @@ var fallbackImage = "../img/NoImage.jpg"
 
 // cat webapp/img/NoImage.jpg | openssl dgst -sha256
 var fallbackImageHash = "d9f8294e9d895f81ce62e73dc7d5dff862a4fa40bd4e0fecf53f7526a8edcac0"
+
 type UserModel struct {
 	ID             int64  `db:"id"`
 	Name           string `db:"name"`
@@ -105,6 +106,24 @@ func getIconHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user: "+err.Error())
 	}
 
+	// リクエストヘッダーのIf-None-Matchをチェック
+	hash := c.Request().Header.Get("If-None-Match")
+	if hash != "" {
+		// compare hash to user icon hash
+		var imageHash string
+		if err := tx.GetContext(ctx, &imageHash, "SELECT image_hash FROM icons WHERE user_id = ?", user.ID); err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				imageHash = fallbackImageHash
+			} else {
+				return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user icon: "+err.Error())
+			}
+		}
+
+		if hash == imageHash {
+			return c.NoContent(http.StatusNotModified)
+		}
+	}
+	
 	var image []byte
 	if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
