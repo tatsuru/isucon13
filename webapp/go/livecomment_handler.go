@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	ahocorasick "github.com/BobuSumisu/aho-corasick"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
@@ -203,13 +202,23 @@ func postLivecommentHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get NG words: "+err.Error())
 	}
 
-	trie := ahocorasick.NewTrieBuilder()
+	var hitSpam int
 	for _, ngword := range ngwords {
-		trie.AddString(ngword.Word)
-	}
-
-	if m := trie.Build().MatchString(req.Comment); len(m) > 0 {
-		return echo.NewHTTPError(http.StatusBadRequest, "このコメントがスパム判定されました")
+		query := `
+		SELECT COUNT(*)
+		FROM
+		(SELECT ? AS text) AS texts
+		INNER JOIN
+		(SELECT CONCAT('%', ?, '%')	AS pattern) AS patterns
+		ON texts.text LIKE patterns.pattern;
+		`
+		if err := tx.GetContext(ctx, &hitSpam, query, req.Comment, ngword.Word); err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get hitspam: "+err.Error())
+		}
+		c.Logger().Infof("[hitSpam=%d] comment = %s", hitSpam, req.Comment)
+		if hitSpam >= 1 {
+			return echo.NewHTTPError(http.StatusBadRequest, "このコメントがスパム判定されました")
+		}
 	}
 
 	now := time.Now().Unix()
