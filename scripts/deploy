@@ -24,8 +24,11 @@ ssh isucon@isu03 "$restart" &
 
 # nginx
 ssh isucon@isu01 "$rotate_nginx" &
+ssh isucon@isu02 "$rotate_nginx" &
+ssh isucon@isu03 "$rotate_nginx" &
 
 # mysql
+ssh isucon@isu01 "$rotate_mysql" &
 ssh isucon@isu03 "$rotate_mysql" &
 
 wait
