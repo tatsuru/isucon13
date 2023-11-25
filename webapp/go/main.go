@@ -17,6 +17,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
 	echolog "github.com/labstack/gommon/log"
@@ -214,15 +215,15 @@ type ErrorResponse struct {
 }
 
 func errorResponseHandler(err error, c echo.Context) {
-	c.Logger().Errorf("error at %s: %+v", c.Path(), err)
+	c.Logger().Errorf("error at %s: %+v", c.Path(), errors.WithStack(err))
 	if he, ok := err.(*echo.HTTPError); ok {
-		if e := c.JSON(he.Code, &ErrorResponse{Error: err.Error()}); e != nil {
-			c.Logger().Errorf("%+v", e)
+		if e := c.JSON(he.Code, &ErrorResponse{Error: errors.WithStack(err).Error()}); e != nil {
+			c.Logger().Errorf("%+v", errors.WithStack(e))
 		}
 		return
 	}
 
-	if e := c.JSON(http.StatusInternalServerError, &ErrorResponse{Error: err.Error()}); e != nil {
-		c.Logger().Errorf("%+v", e)
+	if e := c.JSON(http.StatusInternalServerError, &ErrorResponse{Error: errors.WithStack(err).Error()}); e != nil {
+		c.Logger().Errorf("%+v", errors.WithStack(e))
 	}
 }

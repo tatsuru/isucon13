@@ -27,7 +27,10 @@ const (
 	bcryptDefaultCost        = bcrypt.MinCost
 )
 
-var fallbackImage = "../img/NoImage.jpg"
+const fallbackImage = "../img/NoImage.jpg"
+
+// cat webapp/img/NoImage.jpg | openssl dgst -sha256
+const fallbackImageHash = "d9f8294e9d895f81ce62e73dc7d5dff862a4fa40bd4e0fecf53f7526a8edcac0"
 
 type UserModel struct {
 	ID             int64  `db:"id"`
@@ -89,22 +92,36 @@ func getIconHandler(c echo.Context) error {
 
 	username := c.Param("username")
 
-	tx, err := dbConn.BeginTxx(ctx, nil)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
-	}
-	defer tx.Rollback()
-
 	var user UserModel
-	if err := tx.GetContext(ctx, &user, "SELECT * FROM users WHERE name = ?", username); err != nil {
+	if err := dbConn.GetContext(ctx, &user, "SELECT * FROM users WHERE name = ?", username); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return echo.NewHTTPError(http.StatusNotFound, "not found user that has the given username")
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user: "+err.Error())
 	}
 
+	// リクエストヘッダーのIf-None-Matchをチェック
+	hash := c.Request().Header.Get("If-None-Match")
+	if hash != "" {
+		//trim quotes
+		hash = hash[1 : len(hash)-1]
+
+		var imageHash string
+		if err := dbConn.GetContext(ctx, &imageHash, "SELECT image_hash FROM icons WHERE user_id = ?", user.ID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				imageHash = fallbackImageHash
+			} else {
+				return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user icon: "+err.Error())
+			}
+		}
+
+		if hash == imageHash {
+			return c.NoContent(http.StatusNotModified)
+		}
+	}
+
 	var image []byte
-	if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
+	if err := dbConn.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return c.File(fallbackImage)
 		} else {
@@ -400,6 +417,77 @@ func verifyUserSession(c echo.Context) error {
 	return nil
 }
 
+type imageResp struct {
+	ImageHash string `db:"image_hash"`
+	UserID    int64  `db:"user_id"`
+}
+
+func fillUserResponses(ctx context.Context, tx *sqlx.Tx, userModels []UserModel) ([]User, error) {
+	ret := make([]User, len(userModels))
+
+	themeModels := []ThemeModel{}
+	userIDs := make([]int64, len(userModels))
+	for i, userModel := range userModels {
+		userIDs[i] = userModel.ID
+	}
+	query, params, err := sqlx.In("SELECT * FROM themes WHERE user_id IN (?)", userIDs)
+	if err != nil {
+		return []User{}, err
+	}
+	if err := tx.SelectContext(ctx, &themeModels, query, params...); err != nil {
+		return []User{}, err
+	}
+
+	imageResp := []imageResp{}
+	query, params, err = sqlx.In("SELECT user_id, image_hash FROM icons WHERE user_id IN (?)", userIDs)
+	if err != nil {
+		return []User{}, err
+	}
+	if err := tx.SelectContext(ctx, &imageResp, query, params...); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return []User{}, err
+		}
+	}
+
+	for _, userModel := range userModels {
+		themeOfUser := ThemeModel{}
+		for _, themeModel := range themeModels {
+			if themeModel.UserID == userModel.ID {
+				themeOfUser = themeModel
+				break
+			}
+		}
+		if themeOfUser.UserID == 0 {
+			return []User{}, errors.New("failed to get theme of user")
+		}
+
+		var imageHash string
+		for _, imageResp := range imageResp {
+			if imageResp.UserID == userModel.ID {
+				imageHash = imageResp.ImageHash
+				break
+			}
+		}
+		if imageHash == "" {
+			imageHash = fallbackImageHash
+		}
+
+		ret = append(ret, User{
+			ID:          userModel.ID,
+			Name:        userModel.Name,
+			DisplayName: userModel.DisplayName,
+			Description: userModel.Description,
+			Theme: Theme{
+				ID:       themeOfUser.ID,
+				DarkMode: themeOfUser.DarkMode,
+			},
+			IconHash: imageHash,
+		})
+	}
+
+	return ret, nil
+}
+
 func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (User, error) {
 	themeModel := ThemeModel{}
 	if err := tx.GetContext(ctx, &themeModel, "SELECT * FROM themes WHERE user_id = ?", userModel.ID); err != nil {
@@ -412,8 +500,7 @@ func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (Us
 			return User{}, err
 		}
 
-		// cat webapp/img/NoImage.jpg | openssl dgst -sha256
-		imageHash = "d9f8294e9d895f81ce62e73dc7d5dff862a4fa40bd4e0fecf53f7526a8edcac0"
+		imageHash = fallbackImageHash
 	}
 
 	user := User{
