@@ -221,13 +221,13 @@ func searchLivestreamsHandler(c echo.Context) error {
 		}
 	}
 
-	livestreams := make([]Livestream, len(livestreamModels))
-	for i := range livestreamModels {
-		livestream, err := fillLivestreamResponse(ctx, tx, *livestreamModels[i])
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill livestream: "+err.Error())
-		}
-		livestreams[i] = livestream
+	livestreamModelsNp := make([]LivestreamModel, 0, len(livestreamModels))
+	for _, livestreamModel := range livestreamModels {
+		livestreamModelsNp = append(livestreamModelsNp, *livestreamModel)
+	}
+	livestreams, err := fillLivestreamResponses(ctx, tx, livestreamModelsNp)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill livestream: "+err.Error())
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -484,6 +484,79 @@ func getLivecommentReportsHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, reports)
 }
 
+func fillLivestreamResponses(ctx context.Context, tx *sqlx.Tx, livestreamModels []LivestreamModel) ([]Livestream, error) {
+	ownerModels := []UserModel{}
+	userIDs := make([]int64, len(livestreamModels))
+	for i := range livestreamModels {
+		userIDs[i] = livestreamModels[i].UserID
+	}
+
+	if err := tx.GetContext(ctx, &ownerModels, "SELECT * FROM users WHERE id in (?)", userIDs); err != nil {
+		return []Livestream{}, err
+	}
+	owners, err := fillUserResponses(ctx, tx, ownerModels)
+	if err != nil {
+		return []Livestream{}, err
+	}
+
+	livestreamIDs := make([]int64, len(livestreamModels))
+	for i := range livestreamModels {
+		livestreamIDs[i] = livestreamModels[i].ID
+	}
+
+	var livestreamTagModels []*LivestreamTagModel
+	if err := tx.SelectContext(ctx, &livestreamTagModels, "SELECT * FROM livestream_tags WHERE livestream_id IN (?)", livestreamIDs); err != nil {
+		return []Livestream{}, err
+	}
+
+	tagIDs := make([]int64, len(livestreamTagModels))
+	for i := range livestreamTagModels {
+		tagIDs[i] = livestreamTagModels[i].TagID
+	}
+
+	tags := make([]Tag, len(livestreamTagModels))
+	if err := tx.SelectContext(ctx, &tags, "SELECT * FROM tags WHERE id IN (?)", tagIDs); err != nil {
+		return []Livestream{}, err
+	}
+
+	livestreams := make([]Livestream, len(livestreamModels))
+	for i := range livestreamModels {
+		owner := User{}
+		for j := range owners {
+			if owners[j].ID == livestreamModels[i].UserID {
+				owner = owners[j]
+				break
+			}
+		}
+
+		tagsOfLivestream := make([]Tag, 0)
+		for j := range livestreamTagModels {
+			if livestreamTagModels[j].LivestreamID == livestreamModels[i].ID {
+				for k := range tagsOfLivestream {
+					if tagsOfLivestream[k].ID == livestreamTagModels[j].TagID {
+						tagsOfLivestream = append(tagsOfLivestream, tagsOfLivestream[k])
+						break
+					}
+				}
+			}
+		}
+
+		livestreams[i] = Livestream{
+			ID:           livestreamModels[i].ID,
+			Owner:        owner,
+			Title:        livestreamModels[i].Title,
+			Tags:         tagsOfLivestream,
+			Description:  livestreamModels[i].Description,
+			PlaylistUrl:  livestreamModels[i].PlaylistUrl,
+			ThumbnailUrl: livestreamModels[i].ThumbnailUrl,
+			StartAt:      livestreamModels[i].StartAt,
+			EndAt:        livestreamModels[i].EndAt,
+		}
+	}
+
+	return livestreams, nil
+}
+
 func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel LivestreamModel) (Livestream, error) {
 	ownerModel := UserModel{}
 	if err := tx.GetContext(ctx, &ownerModel, "SELECT * FROM users WHERE id = ?", livestreamModel.UserID); err != nil {
@@ -499,13 +572,18 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 		return Livestream{}, err
 	}
 
-	tags := make([]Tag, len(livestreamTagModels))
+	tagModels := make([]Tag, len(livestreamTagModels))
+	tagIDs := make([]int64, len(livestreamTagModels))
 	for i := range livestreamTagModels {
-		tagModel := TagModel{}
-		if err := tx.GetContext(ctx, &tagModel, "SELECT * FROM tags WHERE id = ?", livestreamTagModels[i].TagID); err != nil {
-			return Livestream{}, err
-		}
+		tagIDs[i] = livestreamTagModels[i].TagID
+	}
 
+	if err := tx.SelectContext(ctx, &tagModels, "SELECT * FROM tags WHERE id IN (?)", tagIDs); err != nil {
+		return Livestream{}, err
+	}
+
+	tags := make([]Tag, len(tagModels))
+	for i, tagModel := range tagModels {
 		tags[i] = Tag{
 			ID:   tagModel.ID,
 			Name: tagModel.Name,

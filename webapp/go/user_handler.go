@@ -398,6 +398,75 @@ func verifyUserSession(c echo.Context) error {
 	return nil
 }
 
+type imageResp struct {
+	Image  []byte `db:"image"`
+	UserID int64  `db:"user_id"`
+}
+
+func fillUserResponses(ctx context.Context, tx *sqlx.Tx, userModels []UserModel) ([]User, error) {
+	ret := make([]User, len(userModels))
+
+	themeModels := []ThemeModel{}
+	userIDs := make([]int64, len(userModels))
+	for i, userModel := range userModels {
+		userIDs[i] = userModel.ID
+	}
+	if err := tx.SelectContext(ctx, &themeModels, "SELECT * FROM themes WHERE user_id IN (?)", userIDs); err != nil {
+		return []User{}, err
+	}
+
+	imageResp := []imageResp{}
+	if err := tx.SelectContext(ctx, &imageResp, "SELECT user_id, image FROM icons WHERE user_id IN (?)", userIDs); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return []User{}, err
+		}
+	}
+
+	for _, userModel := range userModels {
+		themeOfUser := ThemeModel{}
+		for _, themeModel := range themeModels {
+			if themeModel.UserID == userModel.ID {
+				themeOfUser = themeModel
+				break
+			}
+		}
+		if themeOfUser.UserID == 0 {
+			return []User{}, errors.New("failed to get theme of user")
+		}
+
+		var image []byte
+		for _, imageResp := range imageResp {
+			if imageResp.UserID == userModel.ID {
+				image = imageResp.Image
+				break
+			}
+		}
+		if image == nil {
+			fallback, err := os.ReadFile(fallbackImage)
+			if err != nil {
+				return []User{}, err
+			}
+			image = fallback
+		}
+
+		iconHash := sha256.Sum256(image)
+
+		ret = append(ret, User{
+			ID:          userModel.ID,
+			Name:        userModel.Name,
+			DisplayName: userModel.DisplayName,
+			Description: userModel.Description,
+			Theme: Theme{
+				ID:       themeOfUser.ID,
+				DarkMode: themeOfUser.DarkMode,
+			},
+			IconHash: fmt.Sprintf("%x", iconHash),
+		})
+	}
+
+	return ret, nil
+}
+
 func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (User, error) {
 	themeModel := ThemeModel{}
 	if err := tx.GetContext(ctx, &themeModel, "SELECT * FROM themes WHERE user_id = ?", userModel.ID); err != nil {
