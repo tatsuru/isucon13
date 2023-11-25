@@ -77,4 +77,6 @@ func setupTipsAndReactionsCache() error {
 	for _, tipsAndUser := range tipsAndUsers {
 		addCache(fmt.Sprintf("user:%d:tips", tipsAndUser.ReacteeUserID), tipsAndUser.TipsCount)
 	}
+
+	return nil
 }
