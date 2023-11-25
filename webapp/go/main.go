@@ -216,13 +216,13 @@ type ErrorResponse struct {
 func errorResponseHandler(err error, c echo.Context) {
 	c.Logger().Errorf("error at %s: %+v", c.Path(), err)
 	if he, ok := err.(*echo.HTTPError); ok {
-		if e := c.JSON(he.Code, &ErrorResponse{Error: err.Error()}); e != nil {
+		if e := c.JSON(he.Code, &ErrorResponse{Error: errors.WithStack(err).Error()}); e != nil {
 			c.Logger().Errorf("%+v", errors.WithStack(e))
 		}
 		return
 	}
 
-	if e := c.JSON(http.StatusInternalServerError, &ErrorResponse{Error: err.Error()}); e != nil {
+	if e := c.JSON(http.StatusInternalServerError, &ErrorResponse{Error: errors.WithStack(err).Error()}); e != nil {
 		c.Logger().Errorf("%+v", errors.WithStack(e))
 	}
 }
