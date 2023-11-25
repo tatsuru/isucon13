@@ -421,6 +421,79 @@ func moderateHandler(c echo.Context) error {
 		}
 	}
 
+	var tipsAndUsers []tipsAndUser
+	err = dbConn.Select(
+		&tipsAndUsers,
+		`
+			SELECT
+				livestreams.user_id as reactee_user_id,
+				sum(livecomments.tip) as tips_count
+			FROM livecomments
+			INNER JOIN livestreams ON livestreams.id = livecomments.livestream_id
+			GROUP BY reactee_user_id
+		`,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to aggregate tips: %w", err)
+	}
+	for _, tipsAndUser := range tipsAndUsers {
+		addCache(fmt.Sprintf("user:%d:tips", tipsAndUser.ReacteeUserID), tipsAndUser.TipsCount)
+	}
+
+	var tipsAndLivestreams []tipsAndLivestream
+	err = dbConn.Select(
+		&tipsAndLivestreams,
+		`
+			SELECT
+				livestream_id,
+				IFNULL(MAX(tip), 0) as tips_count
+			FROM livecomments
+			GROUP BY livestream_id
+		`,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to aggregate tips: %w", err)
+	}
+	for _, tipsAndLivestream := range tipsAndLivestreams {
+		updateMaxValueIfNeeded(fmt.Sprintf("livestream:%d:maxTip", tipsAndLivestream.LivestreamID), tipsAndLivestream.TipsCount)
+	}
+
+	var totalTipsAndLivestreams []tipsAndLivestream
+	err = dbConn.Select(
+		&totalTipsAndLivestreams,
+		`
+			SELECT
+				livestream_id,
+				SUM(tip) as tips_count
+			FROM livecomments
+			GROUP BY livestream_id
+		`,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to aggregate tips: %w", err)
+	}
+	for _, tipsAndLivestream := range totalTipsAndLivestreams {
+		setCache(fmt.Sprintf("livestream:%d:tips", tipsAndLivestream.LivestreamID), tipsAndLivestream.TipsCount)
+	}
+
+	var commentsAndLivestreams []commentsAndLivestream
+	err = dbConn.Select(
+		&commentsAndLivestreams,
+		`
+			SELECT
+				livestream_id,
+				count(*) as comments_count
+			FROM livecomments
+			GROUP BY livestream_id
+		`,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to aggregate comments: %w", err)
+	}
+	for _, commentsAndLivestream := range commentsAndLivestreams {
+		setCache(fmt.Sprintf("livestream:%d:comments", commentsAndLivestream.LivestreamID), commentsAndLivestream.CommentsCount)
+	}
+
 	if err := tx.Commit(); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
 	}
