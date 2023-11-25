@@ -27,10 +27,10 @@ const (
 	bcryptDefaultCost        = bcrypt.MinCost
 )
 
-var fallbackImage = "../img/NoImage.jpg"
+const fallbackImage = "../img/NoImage.jpg"
 
 // cat webapp/img/NoImage.jpg | openssl dgst -sha256
-var fallbackImageHash = "d9f8294e9d895f81ce62e73dc7d5dff862a4fa40bd4e0fecf53f7526a8edcac0"
+const fallbackImageHash = "d9f8294e9d895f81ce62e73dc7d5dff862a4fa40bd4e0fecf53f7526a8edcac0"
 
 type UserModel struct {
 	ID             int64  `db:"id"`
@@ -415,6 +415,77 @@ func verifyUserSession(c echo.Context) error {
 	}
 
 	return nil
+}
+
+type imageResp struct {
+	ImageHash string `db:"image_hash"`
+	UserID    int64  `db:"user_id"`
+}
+
+func fillUserResponses(ctx context.Context, tx *sqlx.Tx, userModels []UserModel) ([]User, error) {
+	ret := make([]User, len(userModels))
+
+	themeModels := []ThemeModel{}
+	userIDs := make([]int64, len(userModels))
+	for i, userModel := range userModels {
+		userIDs[i] = userModel.ID
+	}
+	query, params, err := sqlx.In("SELECT * FROM themes WHERE user_id IN (?)", userIDs)
+	if err != nil {
+		return []User{}, err
+	}
+	if err := tx.SelectContext(ctx, &themeModels, query, params...); err != nil {
+		return []User{}, err
+	}
+
+	imageResp := []imageResp{}
+	query, params, err = sqlx.In("SELECT user_id, image_hash FROM icons WHERE user_id IN (?)", userIDs)
+	if err != nil {
+		return []User{}, err
+	}
+	if err := tx.SelectContext(ctx, &imageResp, query, params...); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return []User{}, err
+		}
+	}
+
+	for _, userModel := range userModels {
+		themeOfUser := ThemeModel{}
+		for _, themeModel := range themeModels {
+			if themeModel.UserID == userModel.ID {
+				themeOfUser = themeModel
+				break
+			}
+		}
+		if themeOfUser.UserID == 0 {
+			return []User{}, errors.New("failed to get theme of user")
+		}
+
+		var imageHash string
+		for _, imageResp := range imageResp {
+			if imageResp.UserID == userModel.ID {
+				imageHash = imageResp.ImageHash
+				break
+			}
+		}
+		if imageHash == "" {
+			imageHash = fallbackImageHash
+		}
+
+		ret = append(ret, User{
+			ID:          userModel.ID,
+			Name:        userModel.Name,
+			DisplayName: userModel.DisplayName,
+			Description: userModel.Description,
+			Theme: Theme{
+				ID:       themeOfUser.ID,
+				DarkMode: themeOfUser.DarkMode,
+			},
+			IconHash: imageHash,
+		})
+	}
+
+	return ret, nil
 }
 
 func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (User, error) {
