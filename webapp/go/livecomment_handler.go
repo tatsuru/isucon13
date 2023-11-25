@@ -247,6 +247,10 @@ func postLivecommentHandler(c echo.Context) error {
 	}
 
 	addCache(fmt.Sprintf("user:%d:tips", livestreamModel.UserID), req.Tip)
+	addCache(fmt.Sprintf("user:%d:comments", livestreamModel.UserID), req.Tip)
+	addCache(fmt.Sprintf("livestream:%d:tips", livestreamModel.ID), req.Tip)
+	incrCache(fmt.Sprintf("livestream:%d:comments", livestreamModel.ID))
+	updateMaxValueIfNeeded(fmt.Sprintf("livestream:%d:maxTip", livestreamModel.ID), req.Tip)
 
 	if err := tx.Commit(); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
@@ -325,6 +329,8 @@ func reportLivecommentHandler(c echo.Context) error {
 	if err := tx.Commit(); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
 	}
+
+	incrCache(fmt.Sprintf("livestream:%d:reports", livestreamModel.ID))
 
 	return c.JSON(http.StatusCreated, report)
 }
