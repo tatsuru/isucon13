@@ -143,13 +143,6 @@ func postReactionHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
 	}
 
-	livestreamModel := LivestreamModel{}
-	if err := tx.GetContext(ctx, &livestreamModel, "SELECT * FROM livestreams WHERE id = ?", livestreamID); err != nil {
-		return err
-	}
-
-	incrCache(fmt.Sprintf("user:%d:reactions", livestreamModel.UserID))
-
 	return c.JSON(http.StatusCreated, reaction)
 }
 
