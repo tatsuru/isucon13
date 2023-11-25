@@ -4,46 +4,41 @@ import "fmt"
 
 var supercache = make(map[string]interface{})
 
-func setCache(key string, value interface{}) {
+func setCache(key string, value int64) {
 	supercache[key] = value
 }
 
-func getCache(key string) interface{} {
-	return supercache[key]
+func getCache(key string) int64 {
+	if supercache[key] == nil {
+		return 0
+	}
+	return supercache[key].(int64)
 }
 
 func incrCache(key string) {
 	currentValue := getCache(key)
-	if currentValue == nil {
+	if currentValue == 0 {
 		setCache(key, 1)
 	} else {
-		setCache(key, currentValue.(int64)+1)
+		setCache(key, currentValue+1)
 	}
 }
 
 func decrCache(key string) {
 	currentValue := getCache(key)
-	if currentValue == nil {
-		setCache(key, 0)
-	} else {
-		setCache(key, currentValue.(int64)-1)
+	if currentValue != 0 {
+		setCache(key, currentValue-1)
 	}
 }
 
 func addCache(key string, value int64) {
 	currentValue := getCache(key)
-	if currentValue == nil {
-		setCache(key, value)
-	} else {
-		setCache(key, currentValue.(int64)+value)
-	}
+	setCache(key, currentValue+value)
 }
 
 func updateMaxValueIfNeeded(key string, value int64) {
 	currentValue := getCache(key)
-	if currentValue == nil {
-		setCache(key, value)
-	} else if currentValue.(int64) < value {
+	if currentValue == 0 {
 		setCache(key, value)
 	}
 }

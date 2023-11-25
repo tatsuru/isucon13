@@ -95,8 +95,8 @@ func getUserStatisticsHandler(c echo.Context) error {
 
 	var ranking UserRanking
 	for _, user := range users {
-		reactions := getCache(fmt.Sprintf("user:%d:reactions", user.ID)).(int64)
-		tips := getCache(fmt.Sprintf("user:%d:tips", user.ID)).(int64)
+		reactions := getCache(fmt.Sprintf("user:%d:reactions", user.ID))
+		tips := getCache(fmt.Sprintf("user:%d:tips", user.ID))
 
 		score := reactions + tips
 		ranking = append(ranking, UserRankingEntry{
@@ -116,14 +116,14 @@ func getUserStatisticsHandler(c echo.Context) error {
 	}
 
 	// リアクション数
-	totalReactions := getCache(fmt.Sprintf("user:%d:reactions", user.ID)).(int64)
+	totalReactions := getCache(fmt.Sprintf("user:%d:reactions", user.ID))
 
 	// ライブコメント数、チップ合計
-	totalLivecomments := getCache(fmt.Sprintf("user:%d:livecomments", user.ID)).(int64)
-	totalTip := getCache(fmt.Sprintf("user:%d:tips", user.ID)).(int64)
+	totalLivecomments := getCache(fmt.Sprintf("user:%d:livecomments", user.ID))
+	totalTip := getCache(fmt.Sprintf("user:%d:tips", user.ID))
 
 	// 合計視聴者数
-	viewersCount := getCache(fmt.Sprintf("user:%d:viewers", user.ID)).(int64)
+	viewersCount := getCache(fmt.Sprintf("user:%d:viewers", user.ID))
 
 	// お気に入り絵文字
 	var favoriteEmoji string
@@ -188,9 +188,9 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 	// ランク算出
 	var ranking LivestreamRanking
 	for _, livestream := range livestreams {
-		reactions := getCache(fmt.Sprintf("livestream:%d:reactions", livestream.ID)).(int64)
+		reactions := getCache(fmt.Sprintf("livestream:%d:reactions", livestream.ID))
 
-		totalTips := getCache(fmt.Sprintf("livestream:%d:tips", livestream.ID)).(int64)
+		totalTips := getCache(fmt.Sprintf("livestream:%d:tips", livestream.ID))
 
 		score := reactions + totalTips
 		ranking = append(ranking, LivestreamRankingEntry{
@@ -210,16 +210,16 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 	}
 
 	// 視聴者数算出
-	viewersCount := getCache(fmt.Sprintf("livestream:%d:viewers", livestreamID)).(int64)
+	viewersCount := getCache(fmt.Sprintf("livestream:%d:viewers", livestreamID))
 
 	// 最大チップ額
-	maxTip := getCache(fmt.Sprintf("livestream:%d:maxTip", livestreamID)).(int64)
+	maxTip := getCache(fmt.Sprintf("livestream:%d:maxTip", livestreamID))
 
 	// リアクション数
-	totalReactions := getCache(fmt.Sprintf("livestream:%d:reactions", livestreamID)).(int64)
+	totalReactions := getCache(fmt.Sprintf("livestream:%d:reactions", livestreamID))
 
 	// スパム報告数
-	totalReports := getCache(fmt.Sprintf("livestream:%d:reports", livestreamID)).(int64)
+	totalReports := getCache(fmt.Sprintf("livestream:%d:reports", livestreamID))
 
 	if err := tx.Commit(); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
