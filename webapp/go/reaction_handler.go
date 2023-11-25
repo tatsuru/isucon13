@@ -180,13 +180,13 @@ func fillReactionResponses(ctx context.Context, tx *sqlx.Tx, reactionModels []Re
 	if err := tx.SelectContext(ctx, &userModels, query, args...); err != nil {
 		return nil, err
 	}
+	
+	us, err := fillUserResponses(ctx, tx, userModels)
+	if err != nil {
+		return nil, err
+	}
 
-	for user := range userModels {
-		user, err := fillUserResponse(ctx, tx, userModels[user])
-		if err != nil {
-			return nil, err
-		}
-
+	for _, user := range us {
 		var reactionModelID int64
 		for i := range reactionModels {
 			if reactionModels[i].UserID == user.ID {
@@ -219,12 +219,12 @@ func fillReactionResponses(ctx context.Context, tx *sqlx.Tx, reactionModels []Re
 		return nil, err
 	}
 
-	for livestream := range livestreamModels {
-		livestream, err := fillLivestreamResponse(ctx, tx, livestreamModels[livestream])
-		if err != nil {
-			return nil, err
-		}
+	ls, err := fillLivestreamResponses(ctx, tx, livestreamModels)
+	if err != nil {
+		return nil, err
+	}
 
+	for _, livestream := range ls {
 		var reactionModelID int64
 		for i := range reactionModels {
 			if reactionModels[i].LivestreamID == livestream.ID {
