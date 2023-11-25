@@ -88,6 +88,7 @@ func setupTipsAndReactionsCache() error {
 				count(*) as reactions_count
 			FROM livecomments
 			INNER JOIN livestreams ON livestreams.id = livecomments.livestream_id
+			GROUP BY reactee_user_id
 		`,
 	)
 	if err != nil {
@@ -107,6 +108,7 @@ func setupTipsAndReactionsCache() error {
 				sum(livecomments.tip) as tips_count
 			FROM livecomments
 			INNER JOIN livestreams ON livestreams.id = livecomments.livestream_id
+			GROUP BY reactee_user_id
 		`,
 	)
 	if err != nil {
