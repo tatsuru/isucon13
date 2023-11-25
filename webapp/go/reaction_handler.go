@@ -151,7 +151,7 @@ func fillReactionResponses(ctx context.Context, tx *sqlx.Tx, reactionModels []Re
 		return []Reaction{}, nil
 	}
 
-	reactions := make([]Reaction, 0)
+	reactions := make([]Reaction, len(reactionModels))
 
 	// populate users
 	users := make(map[int64]User)
