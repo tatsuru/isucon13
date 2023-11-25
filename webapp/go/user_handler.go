@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"net/http"
+	"os"
 	"os/exec"
 	"time"
 
@@ -285,7 +285,7 @@ func registerHandler(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to write file: "+err.Error())
 	}
-	if out, err := exec.Command("pdnsutil", "load-zone", "u.isucon.dev", powerDNSZoneFile).CombinedOutput(); err != nil {
+	if out, err := exec.Command("sudo", "pdns_control", "bind-reload-now", "u.isucon.dev").CombinedOutput(); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, string(out)+": "+err.Error())
 	}
 
