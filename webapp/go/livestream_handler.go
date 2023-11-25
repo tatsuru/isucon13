@@ -221,13 +221,13 @@ func searchLivestreamsHandler(c echo.Context) error {
 		}
 	}
 
-	livestreamModelsNp := make([]LivestreamModel, 0, len(livestreamModels))
+	livestreamModelsNp := make([]LivestreamModel, len(livestreamModels))
 	for _, livestreamModel := range livestreamModels {
 		livestreamModelsNp = append(livestreamModelsNp, *livestreamModel)
 	}
 	livestreams, err := fillLivestreamResponses(ctx, tx, livestreamModelsNp)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill livestream: "+err.Error())
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill livestreams: "+err.Error())
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -486,7 +486,7 @@ func getLivecommentReportsHandler(c echo.Context) error {
 
 func fillLivestreamResponses(ctx context.Context, tx *sqlx.Tx, livestreamModels []LivestreamModel) ([]Livestream, error) {
 	ownerModels := []UserModel{}
-	userIDs := make([]int64, len(livestreamModels))
+	userIDs := make([]int64, 0, len(livestreamModels))
 	for i := range livestreamModels {
 		userIDs[i] = livestreamModels[i].UserID
 	}
@@ -517,12 +517,12 @@ func fillLivestreamResponses(ctx context.Context, tx *sqlx.Tx, livestreamModels 
 		return []Livestream{}, err
 	}
 
-	tagIDs := make([]int64, len(livestreamTagModels))
+	tagIDs := make([]int64, 0, len(livestreamTagModels))
 	for i := range livestreamTagModels {
 		tagIDs[i] = livestreamTagModels[i].TagID
 	}
 
-	tags := make([]Tag, len(livestreamTagModels))
+	tags := make([]Tag, 0, len(livestreamTagModels))
 	if len(tagIDs) > 0 {
 		query, params, err = sqlx.In("SELECT * FROM tags WHERE id IN (?)", tagIDs)
 		if err != nil {
@@ -533,7 +533,7 @@ func fillLivestreamResponses(ctx context.Context, tx *sqlx.Tx, livestreamModels 
 		}
 	}
 
-	livestreams := make([]Livestream, len(livestreamModels))
+	livestreams := make([]Livestream, 0, len(livestreamModels))
 	for _, livestreamModel := range livestreamModels {
 		foundOwner := User{}
 		for _, owner := range owners {
