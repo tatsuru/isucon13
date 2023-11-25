@@ -93,7 +93,8 @@ CREATE TABLE `livecomments` (
   `comment` VARCHAR(255) NOT NULL,
   `tip` BIGINT NOT NULL DEFAULT 0,
   `created_at` BIGINT NOT NULL,
-  KEY `livestream_id_created_at_desc` (`livestream_id`, `created_at` DESC)
+  KEY `livestream_id_created_at_desc` (`livestream_id`, `created_at` DESC),
+  FULLTEXT (comment) WITH PARSER ngram
 ) ENGINE=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
 -- ユーザからのライブコメントのスパム報告
