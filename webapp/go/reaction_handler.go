@@ -76,7 +76,7 @@ func getReactionsHandler(c echo.Context) error {
 	// 	reactions[i] = reaction
 	// }
 
-	reactions, err := fillReactionResponses(c, ctx, tx, reactionModels)
+	reactions, err := fillReactionResponses(ctx, tx, reactionModels)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill reactions: "+err.Error())
 	}
@@ -153,12 +153,10 @@ func postReactionHandler(c echo.Context) error {
 	return c.JSON(http.StatusCreated, reaction)
 }
 
-func fillReactionResponses(c echo.Context, ctx context.Context, tx *sqlx.Tx, reactionModels []ReactionModel) ([]Reaction, error) {
+func fillReactionResponses(ctx context.Context, tx *sqlx.Tx, reactionModels []ReactionModel) ([]Reaction, error) {
 	if len(reactionModels) == 0 {
 		return []Reaction{}, nil
 	}
-
-	c.Logger().Errorf("reactionModels: %+v", reactionModels)
 
 	reactions := make([]Reaction, 0)
 
@@ -184,7 +182,6 @@ func fillReactionResponses(c echo.Context, ctx context.Context, tx *sqlx.Tx, rea
 	}
 	
 	us, err := fillUserResponses(ctx, tx, userModels)
-	c.Logger().Errorf("users: %+v", us)
 	if err != nil {
 		return []Reaction{}, err
 	}
@@ -223,7 +220,6 @@ func fillReactionResponses(c echo.Context, ctx context.Context, tx *sqlx.Tx, rea
 	}
 
 	ls, err := fillLivestreamResponses(ctx, tx, livestreamModels)
-	c.Logger().Errorf("livestreams: %+v", ls)
 	if err != nil {
 		return []Reaction{}, err
 	}
