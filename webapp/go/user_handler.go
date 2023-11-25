@@ -27,7 +27,10 @@ const (
 	bcryptDefaultCost        = bcrypt.MinCost
 )
 
-var fallbackImage = "../img/NoImage.jpg"
+const fallbackImage = "../img/NoImage.jpg"
+
+// cat webapp/img/NoImage.jpg | openssl dgst -sha256
+const fallbackImageHash = "d9f8294e9d895f81ce62e73dc7d5dff862a4fa40bd4e0fecf53f7526a8edcac0"
 
 type UserModel struct {
 	ID             int64  `db:"id"`
@@ -452,7 +455,7 @@ func fillUserResponses(ctx context.Context, tx *sqlx.Tx, userModels []UserModel)
 			}
 		}
 		if imageHash == "" {
-			imageHash = "d9f8294e9d895f81ce62e73dc7d5dff862a4fa40bd4e0fecf53f7526a8edcac0"
+			imageHash = fallbackImageHash
 		}
 
 		ret = append(ret, User{
@@ -483,8 +486,7 @@ func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (Us
 			return User{}, err
 		}
 
-		// cat webapp/img/NoImage.jpg | openssl dgst -sha256
-		imageHash = "d9f8294e9d895f81ce62e73dc7d5dff862a4fa40bd4e0fecf53f7526a8edcac0"
+		imageHash = fallbackImageHash
 	}
 
 	user := User{
