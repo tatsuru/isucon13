@@ -401,8 +401,8 @@ func verifyUserSession(c echo.Context) error {
 }
 
 type imageResp struct {
-	Image  []byte `db:"image"`
-	UserID int64  `db:"user_id"`
+	ImageHash string `db:"image_hash"`
+	UserID    int64  `db:"user_id"`
 }
 
 func fillUserResponses(ctx context.Context, tx *sqlx.Tx, userModels []UserModel) ([]User, error) {
@@ -422,7 +422,7 @@ func fillUserResponses(ctx context.Context, tx *sqlx.Tx, userModels []UserModel)
 	}
 
 	imageResp := []imageResp{}
-	query, params, err = sqlx.In("SELECT user_id, image FROM icons WHERE user_id IN (?)", userIDs)
+	query, params, err = sqlx.In("SELECT user_id, image_hash FROM icons WHERE user_id IN (?)", userIDs)
 	if err != nil {
 		return []User{}, err
 	}
@@ -444,22 +444,16 @@ func fillUserResponses(ctx context.Context, tx *sqlx.Tx, userModels []UserModel)
 			return []User{}, errors.New("failed to get theme of user")
 		}
 
-		var image []byte
+		var imageHash string
 		for _, imageResp := range imageResp {
 			if imageResp.UserID == userModel.ID {
-				image = imageResp.Image
+				imageHash = imageResp.ImageHash
 				break
 			}
 		}
-		if image == nil {
-			fallback, err := os.ReadFile(fallbackImage)
-			if err != nil {
-				return []User{}, err
-			}
-			image = fallback
+		if imageHash == "" {
+			imageHash = "d9f8294e9d895f81ce62e73dc7d5dff862a4fa40bd4e0fecf53f7526a8edcac0"
 		}
-
-		iconHash := sha256.Sum256(image)
 
 		ret = append(ret, User{
 			ID:          userModel.ID,
@@ -470,7 +464,7 @@ func fillUserResponses(ctx context.Context, tx *sqlx.Tx, userModels []UserModel)
 				ID:       themeOfUser.ID,
 				DarkMode: themeOfUser.DarkMode,
 			},
-			IconHash: fmt.Sprintf("%x", iconHash),
+			IconHash: imageHash,
 		})
 	}
 
