@@ -534,38 +534,39 @@ func fillLivestreamResponses(ctx context.Context, tx *sqlx.Tx, livestreamModels 
 	}
 
 	livestreams := make([]Livestream, len(livestreamModels))
-	for i := range livestreamModels {
-		owner := User{}
-		for j := range owners {
-			if owners[j].ID == livestreamModels[i].UserID {
-				owner = owners[j]
+	for _, livestreamModel := range livestreamModels {
+		foundOwner := User{}
+		for _, owner := range owners {
+			if owner.ID == livestreamModel.UserID {
+				foundOwner = owner
 				break
 			}
 		}
 
 		tagsOfLivestream := make([]Tag, 0)
-		for j := range livestreamTagModels {
-			if livestreamTagModels[j].LivestreamID == livestreamModels[i].ID {
-				for k := range tagsOfLivestream {
-					if tagsOfLivestream[k].ID == livestreamTagModels[j].TagID {
-						tagsOfLivestream = append(tagsOfLivestream, tagsOfLivestream[k])
+		for _, livestreamTagModel := range livestreamTagModels {
+			if livestreamTagModel.LivestreamID == livestreamModel.ID {
+				tagID := livestreamTagModel.TagID
+				for _, tag := range tags {
+					if tag.ID == tagID {
+						tagsOfLivestream = append(tagsOfLivestream, tag)
 						break
 					}
 				}
 			}
 		}
 
-		livestreams[i] = Livestream{
-			ID:           livestreamModels[i].ID,
-			Owner:        owner,
-			Title:        livestreamModels[i].Title,
+		livestreams = append(livestreams, Livestream{
+			ID:           livestreamModel.ID,
+			Owner:        foundOwner,
+			Title:        livestreamModel.Title,
 			Tags:         tagsOfLivestream,
-			Description:  livestreamModels[i].Description,
-			PlaylistUrl:  livestreamModels[i].PlaylistUrl,
-			ThumbnailUrl: livestreamModels[i].ThumbnailUrl,
-			StartAt:      livestreamModels[i].StartAt,
-			EndAt:        livestreamModels[i].EndAt,
-		}
+			Description:  livestreamModel.Description,
+			PlaylistUrl:  livestreamModel.PlaylistUrl,
+			ThumbnailUrl: livestreamModel.ThumbnailUrl,
+			StartAt:      livestreamModel.StartAt,
+			EndAt:        livestreamModel.EndAt,
+		})
 	}
 
 	return livestreams, nil
@@ -586,18 +587,18 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 		return Livestream{}, err
 	}
 
-	tagModels := make([]Tag, len(livestreamTagModels))
-	tagIDs := make([]int64, len(livestreamTagModels))
-	for i := range livestreamTagModels {
-		tagIDs[i] = livestreamTagModels[i].TagID
+	tagIDs := make([]int64, 0)
+	for _, tm := range livestreamTagModels {
+		tagIDs = append(tagIDs, tm.TagID)
 	}
 
-	tags := make([]Tag, len(tagModels))
+	tags := make([]Tag, len(tagIDs))
 	if len(tagIDs) > 0 {
 		query, params, err := sqlx.In("SELECT * FROM tags WHERE id IN (?)", tagIDs)
 		if err != nil {
 			return Livestream{}, err
 		}
+		tagModels := make([]Tag, len(livestreamTagModels))
 		if err := tx.SelectContext(ctx, &tagModels, query, params...); err != nil {
 			return Livestream{}, err
 		}
