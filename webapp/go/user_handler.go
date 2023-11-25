@@ -32,9 +32,6 @@ const fallbackImage = "../img/NoImage.jpg"
 // cat webapp/img/NoImage.jpg | openssl dgst -sha256
 const fallbackImageHash = "d9f8294e9d895f81ce62e73dc7d5dff862a4fa40bd4e0fecf53f7526a8edcac0"
 
-// cat webapp/img/NoImage.jpg | openssl dgst -sha256
-var fallbackImageHash = "d9f8294e9d895f81ce62e73dc7d5dff862a4fa40bd4e0fecf53f7526a8edcac0"
-
 type UserModel struct {
 	ID             int64  `db:"id"`
 	Name           string `db:"name"`
