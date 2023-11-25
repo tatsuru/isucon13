@@ -158,12 +158,14 @@ func fillReactionResponses(c echo.Context, ctx context.Context, tx *sqlx.Tx, rea
 		return []Reaction{}, nil
 	}
 
-	reactions := make([]Reaction, len(reactionModels))
+	c.Logger().Errorf("reactionModels: %+v", reactionModels)
+
+	reactions := make([]Reaction, 0)
 
 	// populate users
 	users := make(map[int64]User)
 
-	userIDs := make([]int64, len(reactionModels))
+	userIDs := make([]int64, 0)
 	for i := range reactionModels {
 		userIDs = append(userIDs, reactionModels[i].UserID)
 	}
@@ -202,7 +204,7 @@ func fillReactionResponses(c echo.Context, ctx context.Context, tx *sqlx.Tx, rea
 	// populate liveStream
 	livestreams := make(map[int64]Livestream)
 
-	livestreamIDs := make([]int64, len(reactionModels))
+	livestreamIDs := make([]int64, 0)
 	for i := range reactionModels {
 		livestreamIDs = append(livestreamIDs, reactionModels[i].LivestreamID)
 	}
